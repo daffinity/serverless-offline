@@ -12,6 +12,7 @@ module.exports = function(ServerlessPlugin, serverlessPath) {
   
   const createLambdaContext = require('./createLambdaContext');
   const createVelocityContext = require('./createVelocityContext');
+  const authorizeEndpointRequest = require('./authorizeEndpointRequest');
   const renderVelocityTemplateObject = require('./renderVelocityTemplateObject');
 
   return class Offline extends ServerlessPlugin {
@@ -52,6 +53,10 @@ module.exports = function(ServerlessPlugin, serverlessPath) {
             description:  'Optional - The region used to populate your velocity templates. Default: the first region for the first stage found in your project.'
           }, 
           {
+            option:       'requireAuthorization',
+            shortcut:     'a',
+            description:  'Optional - Require IAM authorization for endpoints with it enabled. Default: false.'
+          }, 
           {
             option:       'corsHeaders',
             shortcut:     'H',
@@ -111,6 +116,7 @@ module.exports = function(ServerlessPlugin, serverlessPath) {
         port: userOptions.port || 3000,
         prefix: userOptions.prefix || '/',
         stage: userOptions.stage || stagesKeys[0],
+        requireAuthorization: userOptions.requireAuthorization || false,
         skipRequireCacheInvalidation: userOptions.skipRequireCacheInvalidation || false,
         custom: state.project.custom['serverless-offline'],
         httpsProtocol: userOptions.httpsProtocol || '',
@@ -274,13 +280,28 @@ module.exports = function(ServerlessPlugin, serverlessPath) {
                 serverlessLog(`Warning: no template found for '${contentType}' content-type.`);
                 console.log();
               } else {
-                try {
-                  debugLog('Populating event...');
-                  const velocityContext = createVelocityContext(request, this.contextOptions, request.payload || {});
-                  event = renderVelocityTemplateObject(requestTemplate, velocityContext);
-                }
-                catch (err) {
-                  return this._reply500(response, `Error while parsing template "${contentType}" for ${funName}`, err);
+                // Optionally perform AWS IAM authorization and add the context to the request template context.
+                if (this.options.requireAuthorization && endpoint.authorizationType === 'AWS_IAM') {
+                  debugLog(`Performing IAM authorization for ${funName}...`);
+                  authorizeEndpointRequest(request, this.contextOptions, request.payload || {}, function (err, iamContextOptions) {
+                    if (err) {
+                      return this._reply500(response, `Error performing IAM authorization for ${funName}`, err);
+                    }
+
+                    // Add the new IAM context such as ARN to the request template context.
+                    Object.assign(this.contextOptions, iamContextOptions);
+
+                    //populateEvent(request, response);
+                  });
+                } else {
+                  try {
+                    debugLog('Populating event...');
+                    const velocityContext = createVelocityContext(request, this.contextOptions, request.payload || {});
+                    event = renderVelocityTemplateObject(requestTemplate, velocityContext);
+                  }
+                  catch (err) {
+                    return this._reply500(response, `Error while parsing template "${contentType}" for ${funName}`, err);
+                  }
                 }
               }
               
