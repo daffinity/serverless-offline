@@ -52,6 +52,11 @@ module.exports = function(ServerlessPlugin, serverlessPath) {
             description:  'Optional - The region used to populate your velocity templates. Default: the first region for the first stage found in your project.'
           }, 
           {
+            option:       'corsHeaders',
+            shortcut:     'H',
+            description:  'Optional - Set allowed CORS headers for all endpoints. Default: Accept, Authorization, Content-Type, and If-None-Match.'
+          }, 
+          {
             option:       'skipRequireCacheInvalidation',
             shortcut:     'c',
             description:  'Optional - Tells the plugin to skip require cache invalidation. A script reloading tool like Nodemon might then be needed. Default: false.'
@@ -110,6 +115,14 @@ module.exports = function(ServerlessPlugin, serverlessPath) {
         httpsProtocol: userOptions.httpsProtocol || '',
       };
       
+      // Parse CORS headers if included in Serverless plugin config or userOptions. If the are undefined then hapi uses the default.
+      if (userOptions.corsHeaders) {
+        this.options.corsHeaders = userOptions.corsHeaders.split(',').map(h => h.trim());
+        debugLog('Parsed custom CORS headers:', this.options.corsHeaders);
+      } else if (this.options.custom && this.options.custom.corsHeaders) {
+        this.options.corsHeaders = this.options.custom.corsHeaders;
+      }
+
       const stageVariables = stages[this.options.stage];
       this.options.region = userOptions.region || Object.keys(stageVariables.regions)[0];
       
@@ -208,7 +221,7 @@ module.exports = function(ServerlessPlugin, serverlessPath) {
           serverlessLog(`${method} ${path}`);
           
           // route configuration
-          const config = { cors: true };
+          const config = { cors: { headers: this.options.corsHeaders } };
           // When no content-type is provided, APIG sets 'application/json'
           if (method !== 'GET' && method !== 'HEAD') config.payload = { override: defaultContentType };
           
