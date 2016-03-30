@@ -58,17 +58,12 @@ module.exports = S => {
             description:  'The region used to populate your templates. Default: the first region for the first stage found.'
           }, 
           {
-<<<<<<< HEAD
-          {
             option:       'corsHeaders',
             shortcut:     'H',
             description:  'Optional - Set allowed CORS headers for all endpoints. Default: Accept, Authorization, Content-Type, and If-None-Match.'
           }, 
           {
-            option:       'skipRequireCacheInvalidation',
-=======
             option:       'skipCacheInvalidation',
->>>>>>> dherault/master
             shortcut:     'c',
             description:  'Tells the plugin to skip require cache invalidation. A script reloading tool like Nodemon might then be needed'
           }, 
@@ -242,15 +237,10 @@ module.exports = S => {
           
           serverlessLog(`${method} ${path}`);
           
-<<<<<<< HEAD
-          // route configuration
-          const config = { cors: { headers: this.options.corsHeaders } };
-          // When no content-type is provided, APIG sets 'application/json'
-=======
           // Route configuration
-          const config = { cors: true };
+          const config = { cors: { headers: this.options.corsHeaders } };
+          
           // When no content-type is provided on incomming requests, APIG sets 'application/json'
->>>>>>> dherault/master
           if (method !== 'GET' && method !== 'HEAD') config.payload = { override: defaultContentType };
           
           this.server.route({
