@@ -182,7 +182,7 @@ module.exports = function(ServerlessPlugin, serverlessPath) {
       
       functions.forEach(fun => {
         
-        if (fun.getRuntime() !== 'nodejs') return;
+        if (!/^nodejs.*$/.test(fun.getRuntime())) return;
         
         console.log();
         serverlessLog(`Routes for ${fun._config.sPath}:`);
